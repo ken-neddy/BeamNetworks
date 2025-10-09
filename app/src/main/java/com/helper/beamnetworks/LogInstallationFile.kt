@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,7 +21,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,6 +47,7 @@ fun LogInstallationScreen(navController: NavController) {
     var clientPhone by remember { mutableStateOf("") }
     var clientLocation by remember { mutableStateOf("") }
     var installationDate by remember { mutableStateOf("") }
+    var moreNotes by remember { mutableStateOf("") }
     val datePickerState = rememberDatePickerState()
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -80,7 +83,7 @@ fun LogInstallationScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Log a new installation") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -89,11 +92,24 @@ fun LogInstallationScreen(navController: NavController) {
                             contentDescription = "Back"
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: Handle submission */ }) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Submit"
+                        )
+                    }
                 }
             )
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
             OutlinedTextField(
                 value = clientPhone,
                 onValueChange = { clientPhone = it },
@@ -145,10 +161,19 @@ fun LogInstallationScreen(navController: NavController) {
                         Icon(
                             painter = painterResource(id = R.drawable.calendar_add_on_24px),
                             contentDescription = "Select Date",
-                                    tint = Color.Unspecified
+                            tint = Color.Unspecified
                         )
                     }
                 }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = moreNotes,
+                onValueChange = { moreNotes = it },
+                label = { Text("More notes") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
             )
         }
     }
