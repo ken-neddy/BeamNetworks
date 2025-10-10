@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -117,7 +118,7 @@ fun LogInstallationScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 trailingIcon = {
-                    IconButton(onClick = { /* TODO: Handle call log icon click */ }) {
+                    IconButton(onClick = { navController.navigate("call_log") }) {
                         Icon(
                             painter = painterResource(id = R.drawable.call_log_24px),
                             contentDescription = "Call Log",
@@ -175,6 +176,13 @@ fun LogInstallationScreen(navController: NavController) {
                     .fillMaxWidth()
                     .height(150.dp)
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { /* TODO: Handle submission */ },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Submit")
+            }
         }
     }
 }

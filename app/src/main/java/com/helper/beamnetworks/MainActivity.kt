@@ -60,6 +60,9 @@ fun BeamNetworksApp() {
         composable("log_installation") {
             LogInstallationScreen(navController)
         }
+        composable("call_log") {
+            CallLogScreen(navController)
+        }
     }
 }
 
