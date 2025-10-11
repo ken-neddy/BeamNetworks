@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,13 @@ fun LogInstallationScreen(navController: NavController) {
     var moreNotes by remember { mutableStateOf("") }
     val datePickerState = rememberDatePickerState()
     var showDatePicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(key1 = Unit) {
+        navController.currentBackStackEntry?.savedStateHandle?.get<String>("selected_phone_number")?.let {
+            clientPhone = it
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("selected_phone_number")
+        }
+    }
 
     if (showDatePicker) {
         DatePickerDialog(
