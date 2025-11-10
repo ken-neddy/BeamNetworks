@@ -18,7 +18,10 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -52,30 +55,18 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogInstallationScreen(navController: NavController, viewModel: LogInstallationViewModel = viewModel()) {
+fun LogExpenseScreen(navController: NavController, viewModel: LogExpenseViewModel = viewModel()) {
     val datePickerState = rememberDatePickerState()
     var showDatePicker by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val saveState by viewModel.saveState.collectAsState()
-
-    LaunchedEffect(key1 = Unit) {
-        navController.currentBackStackEntry?.savedStateHandle?.get<String>("selected_phone_number")?.let {
-            viewModel.clientPhone = it
-            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("selected_phone_number")
-        }
-    }
-
-    LaunchedEffect(key1 = navController.currentBackStackEntry?.savedStateHandle) {
-        navController.currentBackStackEntry?.savedStateHandle?.get<String>("picked_location")?.let {
-            viewModel.clientLocation = it
-            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("picked_location")
-        }
-    }
+    val expenseOptions = listOf("link", "ODU", "power", "system")
+    var expanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(saveState) {
         when (val state = saveState) {
             is SaveState.Success -> {
-                snackbarHostState.showSnackbar("Installation saved successfully!")
+                snackbarHostState.showSnackbar("Expense saved successfully!")
                 viewModel.resetSaveState()
             }
             is SaveState.Error -> {
@@ -95,7 +86,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                         showDatePicker = false
                         datePickerState.selectedDateMillis?.let {
                             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            viewModel.installationDate = sdf.format(Date(it))
+                            viewModel.date = sdf.format(Date(it))
                         }
                     }
                 ) {
@@ -120,7 +111,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Log a new installation") },
+                title = { Text("Log a new expense") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -130,7 +121,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.saveInstallation() }) {
+                    IconButton(onClick = { viewModel.saveExpense() }) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Submit"
@@ -147,54 +138,49 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                OutlinedTextField(
-                    value = viewModel.clientPhone,
-                    onValueChange = { viewModel.clientPhone = it },
-                    label = { Text("Client's Phone Number*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = viewModel.clientPhone.isBlank() && viewModel.submitted,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    trailingIcon = {
-                        IconButton(onClick = { navController.navigate("call_log") }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.call_log_24px),
-                                contentDescription = "Call Log",
-                                tint = Color.Unspecified
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = viewModel.item,
+                        onValueChange = { viewModel.item = it },
+                        label = { Text("Item*") },
+                        isError = viewModel.item.isBlank() && viewModel.submitted,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        expenseOptions.forEach { selectionOption ->
+                            DropdownMenuItem(
+                                text = { Text(selectionOption) },
+                                onClick = {
+                                    viewModel.item = selectionOption
+                                    expanded = false
+                                }
                             )
                         }
                     }
-                )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = viewModel.clientName,
-                    onValueChange = { viewModel.clientName = it },
-                    label = { Text("Client's Full Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = viewModel.clientLocation,
-                    onValueChange = { viewModel.clientLocation = it },
-                    label = { Text("Client's Location*") },
+                    value = viewModel.amount,
+                    onValueChange = { viewModel.amount = it },
+                    label = { Text("Amount*") },
+                    isError = viewModel.amount.isBlank() && viewModel.submitted,
                     modifier = Modifier.fillMaxWidth(),
-                    isError = viewModel.clientLocation.isBlank() && viewModel.submitted,
-                    trailingIcon = {
-                        IconButton(onClick = { navController.navigate("map") }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.globe_location_pin_24px),
-                                contentDescription = "Select Location",
-                                tint = Color.Unspecified
-                            )
-                        }
-                    }
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = viewModel.installationDate,
+                    value = viewModel.date,
                     onValueChange = {},
-                    label = { Text("Installation Date*") },
+                    label = { Text("Date*") },
+                    isError = viewModel.date.isBlank() && viewModel.submitted,
                     modifier = Modifier.fillMaxWidth(),
-                    isError = viewModel.installationDate.isBlank() && viewModel.submitted,
                     readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
@@ -214,10 +200,10 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-            )
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { viewModel.saveInstallation() },
+                    onClick = { viewModel.saveExpense() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Submit")
@@ -232,6 +218,6 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
 
 @Preview(showBackground = true)
 @Composable
-fun LogInstallationScreenPreview() {
-    LogInstallationScreen(rememberNavController())
+fun LogExpenseScreenPreview() {
+    LogExpenseScreen(rememberNavController())
 }
