@@ -5,7 +5,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.WindowManager
@@ -39,7 +41,7 @@ class CallerIDService : Service() {
         return NotificationCompat.Builder(this, "caller_id_channel")
             .setContentTitle("Beam Networks Caller ID")
             .setContentText("Checking for caller information...")
-            .setSmallIcon(R.drawable.beam_networks_icon_zoomed)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .build()
     }
 
@@ -54,35 +56,38 @@ class CallerIDService : Service() {
                         for (child in snapshot.children) {
                             val installation = child.getValue(InstallationData::class.java)
                             if (installation != null) {
-                                showPopup(installation)
-                                break // Show popup for the first match
+                                Handler(Looper.getMainLooper()).post {
+                                    showPopup(installation)
+                                }
+                                break
                             }
                         }
                     } else {
-                        stopSelf() // No matching caller, stop the service
+                        stopSelf()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    stopSelf() // Stop the service on error
+                    stopSelf()
                 }
             })
     }
 
     private fun showPopup(installation: InstallationData) {
+        if (popupView != null) return
+
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         popupView = inflater.inflate(R.layout.caller_id_popup, null)
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = 100 // Offset from the top
+            gravity = Gravity.CENTER
         }
 
         popupView?.findViewById<TextView>(R.id.caller_name)?.text = installation.clientName
@@ -95,6 +100,13 @@ class CallerIDService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        popupView?.let { windowManager.removeView(it) }
+        if (popupView != null) {
+             Handler(Looper.getMainLooper()).post {
+                if (popupView?.windowToken != null) {
+                    windowManager.removeView(popupView)
+                    popupView = null
+                }
+            }
+        }
     }
 }

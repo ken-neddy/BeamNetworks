@@ -3,6 +3,7 @@ package com.helper.beamnetworks
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -56,7 +57,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.helper.beamnetworks.ui.theme.BeamNetworksTheme
 import com.helper.beamnetworks.R
 import kotlinx.coroutines.launch
@@ -104,13 +105,23 @@ fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewMo
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val phoneStatePermission = rememberPermissionState(permission = Manifest.permission.READ_PHONE_STATE)
+
+    val permissionsToRequest = mutableListOf(
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.READ_CALL_LOG
+    )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+    }
+    val multiplePermissionsState = rememberMultiplePermissionsState(permissions = permissionsToRequest)
+
     val overlayPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {}
 
     LaunchedEffect(Unit) {
-        phoneStatePermission.launchPermissionRequest()
+        multiplePermissionsState.launchMultiplePermissionRequest()
+
         if (!Settings.canDrawOverlays(context)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
