@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -90,6 +91,9 @@ fun BeamNetworksApp() {
         composable("upcoming_installations") {
             UpcomingInstallationsScreen(navController)
         }
+        composable("completed_installations") {
+            CompletedInstallationsScreen(navController)
+        }
         composable("call_log") {
             CallLogScreen(navController)
         }
@@ -137,6 +141,15 @@ fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewMo
             ModalDrawerSheet(modifier = Modifier.width(250.dp)) {
                 Spacer(modifier = Modifier.height(12.dp))
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Check, contentDescription = "Completed Installations") },
+                    label = { Text("Completed Installations") },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        navController.navigate("completed_installations")
+                    }
+                )
+                NavigationDrawerItem(
                     icon = { Icon(painterResource(id = R.drawable.currency_usd), contentDescription = "Lipwa Link") },
                     label = { Text("Lipwa Link") },
                     selected = false,
@@ -147,7 +160,7 @@ fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewMo
                     }
                 )
                 NavigationDrawerItem(
-                    icon = { Icon(painterResource(id = R.drawable.currency_usd), contentDescription = "PPPoE List") },
+                    icon = { Icon(painterResource(id = R.drawable.account_group_outline), contentDescription = "PPPoE List") },
                     label = { Text("PPPoE List") },
                     selected = false,
                     onClick = { 
