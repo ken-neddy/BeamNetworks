@@ -114,9 +114,9 @@ fun MapPicker(mapView: MapView, onLocationSelected: (GeoPoint) -> Unit) {
             mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
-                controller.setZoom(15.0)
-                // Default center
-                controller.setCenter(GeoPoint(0.0, 0.0))
+                controller.setZoom(17.0)
+                // redsoil
+                controller.setCenter(GeoPoint(-1.236348, 36.9263500))
 
                 val mapEventsReceiver = object : org.osmdroid.events.MapEventsReceiver {
                     override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {

@@ -18,6 +18,9 @@ class DashboardViewModel : ViewModel() {
     private val _upcomingInstallationsCount = MutableStateFlow(0)
     val upcomingInstallationsCount: StateFlow<Int> = _upcomingInstallationsCount
 
+    private val _completedInstallationsThisMonthCount = MutableStateFlow(0)
+    val completedInstallationsThisMonthCount: StateFlow<Int> = _completedInstallationsThisMonthCount
+
     private val _monthlyExpensesTotal = MutableStateFlow(0.0)
     val monthlyExpensesTotal: StateFlow<Double> = _monthlyExpensesTotal
 
@@ -43,18 +46,33 @@ class DashboardViewModel : ViewModel() {
 
             installationsRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    var count = 0
+                    var upcomingCount = 0
+                    var completedThisMonthCount = 0
                     for (child in snapshot.children) {
                         try {
                             val installation = child.getValue(InstallationData::class.java)
-                            if (installation != null && installation.status == "Upcoming") {
-                                count++
+                            if (installation != null) {
+                                if (installation.status == "Upcoming") {
+                                    upcomingCount++
+                                } else if (installation.status == "Completed") {
+                                    try {
+                                        if (installation.installationDate.isNotBlank()) {
+                                            val installationDate = dateFormat.parse(installation.installationDate)
+                                            if (installationDate != null && !installationDate.before(firstDayOfMonth)) {
+                                                completedThisMonthCount++
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        // Ignore entries with malformed dates
+                                    }
+                                }
                             }
                         } catch (e: Exception) {
                             // Ignore invalid data
                         }
                     }
-                    _upcomingInstallationsCount.value = count
+                    _upcomingInstallationsCount.value = upcomingCount
+                    _completedInstallationsThisMonthCount.value = completedThisMonthCount
                 }
 
                 override fun onCancelled(error: DatabaseError) {

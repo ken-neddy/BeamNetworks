@@ -63,10 +63,18 @@ fun LogExpenseScreen(navController: NavController, viewModel: LogExpenseViewMode
     val expenseOptions = listOf("link", "ODU", "power", "system")
     var expanded by remember { mutableStateOf(false) }
 
+    // Set the initial date to today
+    LaunchedEffect(Unit) {
+        if (viewModel.date.isBlank()) {
+            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            viewModel.date = sdf.format(Date())
+        }
+    }
+
     LaunchedEffect(saveState) {
         when (val state = saveState) {
             is SaveState.Success -> {
-                snackbarHostState.showSnackbar("Expense saved successfully!")
+                snackbarHostState.showSnackbar("Expense recorded!")
                 viewModel.resetSaveState()
             }
             is SaveState.Error -> {
@@ -111,7 +119,7 @@ fun LogExpenseScreen(navController: NavController, viewModel: LogExpenseViewMode
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Log a new expense") },
+                title = { Text("Log an expense") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(

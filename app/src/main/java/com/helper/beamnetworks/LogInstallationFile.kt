@@ -120,7 +120,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Log a new installation") },
+                title = { Text("Log an installation") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(

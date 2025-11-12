@@ -94,6 +94,9 @@ fun BeamNetworksApp() {
         composable("completed_installations") {
             CompletedInstallationsScreen(navController)
         }
+        composable("monthly_expenses") {
+            MonthlyExpensesScreen(navController)
+        }
         composable("call_log") {
             CallLogScreen(navController)
         }
@@ -209,6 +212,7 @@ fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewMo
 @Composable
 fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
     val upcomingInstallations by viewModel.upcomingInstallationsCount.collectAsState()
+    val completedInstallations by viewModel.completedInstallationsThisMonthCount.collectAsState()
     val monthlyExpenses by viewModel.monthlyExpensesTotal.collectAsState()
 
     Card(
@@ -222,20 +226,36 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
             defaultElevation = 7.dp
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { navController.navigate("upcoming_installations") }
+                ) {
+                    Text("Upcoming Installations")
+                    Text(upcomingInstallations.toString())
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { navController.navigate("completed_installations") }
+                ) {
+                    Text("Completed This Month")
+                    Text(completedInstallations.toString())
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { navController.navigate("upcoming_installations") }
+                modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
             ) {
-                Text("Upcoming Installations")
-                Text(upcomingInstallations.toString())
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("This Month's Expenses")
                 Text(String.format("%.2f", monthlyExpenses))
             }
