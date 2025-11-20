@@ -12,7 +12,12 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end"
         android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_menu_close_clear_cancel" />
+        android.src="@android:drawable/ic_menu_close_clear_cancel" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Caller Name:" />
 
     <TextView
         android:id="@+id/caller_name"
@@ -20,15 +25,42 @@
         android:layout_height="wrap_content"
         android:textStyle="bold" />
 
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Phone Number:" />
+
     <TextView
         android:id="@+id/caller_number"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Installation Status:" />
+
     <TextView
         android:id="@+id/caller_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Location:" />
 
     <TextView
         android:id="@+id/caller_location"

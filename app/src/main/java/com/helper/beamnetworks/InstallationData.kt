@@ -7,5 +7,6 @@ data class InstallationData(
     val clientLocation: String = "",
     val installationDate: String = "",
     val moreNotes: String = "",
-    var status: String = "Upcoming"
+    var status: String = "Upcoming",
+    val hasRouter: Boolean = false
 )

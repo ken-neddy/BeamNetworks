@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -102,6 +102,7 @@ fun InstallationListItem(installation: InstallationData, onComplete: () -> Unit)
                     }
                 )
                 Text("Date: ${installation.installationDate}")
+                Text("Has Router: ${if (installation.hasRouter) "Yes" else "No"}")
                 if (installation.moreNotes.isNotBlank()) {
                     Text("Notes: ${installation.moreNotes}")
                 }
@@ -114,7 +115,7 @@ fun InstallationListItem(installation: InstallationData, onComplete: () -> Unit)
                     Icon(Icons.Default.Call, contentDescription = "Call Client")
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = onComplete) {
+                TextButton(onClick = onComplete) {
                     Text("Complete")
                 }
             }

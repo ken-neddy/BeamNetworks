@@ -59,6 +59,7 @@ fun CompletedInstallationsScreen(
                         Text("Phone: ${installation.clientPhone}")
                         Text("Location: ${installation.clientLocation}")
                         Text("Date: ${installation.installationDate}")
+                        Text("Has Router: ${if (installation.hasRouter) "Yes" else "No"}")
                         if (installation.moreNotes.isNotBlank()) {
                             Text("Notes: ${installation.moreNotes}")
                         }

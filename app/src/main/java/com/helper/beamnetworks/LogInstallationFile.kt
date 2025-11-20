@@ -1,7 +1,11 @@
 package com.helper.beamnetworks
 
+import android.app.NotificationManager
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -38,10 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -57,6 +64,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
     var showDatePicker by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val saveState by viewModel.saveState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(key1 = Unit) {
         navController.currentBackStackEntry?.savedStateHandle?.get<String>("selected_phone_number")?.let {
@@ -76,7 +84,13 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
         when (val state = saveState) {
             is SaveState.Success -> {
                 snackbarHostState.showSnackbar("Installation saved successfully!")
+                showNewInstallationNotification(context, viewModel.clientName, viewModel.installationDate)
                 viewModel.resetSaveState()
+                if (viewModel.isEditing) {
+                    navController.popBackStack()
+                } else {
+                    // Optionally, navigate back or clear the form
+                }
             }
             is SaveState.Error -> {
                 snackbarHostState.showSnackbar("Error: ${state.message}")
@@ -120,7 +134,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Log an installation") },
+                title = { Text(if (viewModel.isEditing) "Installation Details" else "Log a new installation") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -130,11 +144,13 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.saveInstallation() }) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Submit"
-                        )
+                    if (!viewModel.isEditing) {
+                        IconButton(onClick = { viewModel.saveInstallation() }) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Submit"
+                            )
+                        }
                     }
                 }
             )
@@ -152,15 +168,18 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     onValueChange = { viewModel.clientPhone = it },
                     label = { Text("Client's Phone Number*") },
                     modifier = Modifier.fillMaxWidth(),
+                    readOnly = viewModel.isEditing,
                     isError = viewModel.clientPhone.isBlank() && viewModel.submitted,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     trailingIcon = {
-                        IconButton(onClick = { navController.navigate("call_log") }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.call_log_24px),
-                                contentDescription = "Call Log",
-                                tint = Color.Unspecified
-                            )
+                        if (!viewModel.isEditing) {
+                            IconButton(onClick = { navController.navigate("call_log") }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.call_log_24px),
+                                    contentDescription = "Call Log",
+                                    tint = Color.Unspecified
+                                )
+                            }
                         }
                     }
                 )
@@ -169,6 +188,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     value = viewModel.clientName,
                     onValueChange = { viewModel.clientName = it },
                     label = { Text("Client's Full Name") },
+                    readOnly = viewModel.isEditing,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -177,14 +197,17 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     onValueChange = { viewModel.clientLocation = it },
                     label = { Text("Client's Location*") },
                     modifier = Modifier.fillMaxWidth(),
+                    readOnly = viewModel.isEditing,
                     isError = viewModel.clientLocation.isBlank() && viewModel.submitted,
                     trailingIcon = {
-                        IconButton(onClick = { navController.navigate("map") }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.globe_location_pin_24px),
-                                contentDescription = "Select Location",
-                                tint = Color.Unspecified
-                            )
+                        if (!viewModel.isEditing) {
+                            IconButton(onClick = { navController.navigate("map") }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.globe_location_pin_24px),
+                                    contentDescription = "Select Location",
+                                    tint = Color.Unspecified
+                                )
+                            }
                         }
                     }
                 )
@@ -194,33 +217,47 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
                     onValueChange = {},
                     label = { Text("Installation Date*") },
                     modifier = Modifier.fillMaxWidth(),
+                    readOnly = viewModel.isEditing,
                     isError = viewModel.installationDate.isBlank() && viewModel.submitted,
-                    readOnly = true,
                     trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.calendar_add_on_24px),
-                                contentDescription = "Select Date",
-                                tint = Color.Unspecified
-                            )
+                        if (!viewModel.isEditing) {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.calendar_add_on_24px),
+                                    contentDescription = "Select Date",
+                                    tint = Color.Unspecified
+                                )
+                            }
                         }
                     }
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = viewModel.hasRouter,
+                        onCheckedChange = { viewModel.hasRouter = it },
+                        enabled = !viewModel.isEditing
+                    )
+                    Text("Client has router")
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = viewModel.moreNotes,
                     onValueChange = { viewModel.moreNotes = it },
                     label = { Text("More notes") },
+                    readOnly = viewModel.isEditing,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
             )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { viewModel.saveInstallation() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Submit")
+                if (!viewModel.isEditing) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewModel.saveInstallation() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Submit")
+                    }
                 }
             }
             if (saveState == SaveState.Saving) {
@@ -228,6 +265,22 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
             }
         }
     }
+}
+
+private fun showNewInstallationNotification(context: Context, clientName: String, installationDate: String) {
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val date = sdf.parse(installationDate)
+    val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(date)
+    val soundUri = Uri.parse("android.resource://${context.packageName}/" + R.raw.beam_networks_notification)
+
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val notification = NotificationCompat.Builder(context, "new_installation_channel_v2")
+        .setContentTitle("New Installation Logged")
+        .setContentText("Installation for $clientName scheduled for $dayOfWeek, $installationDate.")
+        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setSound(soundUri)
+        .build()
+    notificationManager.notify(System.currentTimeMillis().toInt(), notification)
 }
 
 @Preview(showBackground = true)

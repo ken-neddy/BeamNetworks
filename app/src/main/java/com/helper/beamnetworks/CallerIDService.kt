@@ -1,5 +1,6 @@
 package com.helper.beamnetworks
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.Service
 import android.content.Context
@@ -10,18 +11,23 @@ import android.os.IBinder
 import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlin.math.abs
 
 class CallerIDService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private var popupView: android.view.View? = null
+    private var popupView: View? = null
+    private var initialX = 0f
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -73,6 +79,7 @@ class CallerIDService : Service() {
             })
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun showPopup(installation: InstallationData) {
         if (popupView != null) return
 
@@ -84,7 +91,7 @@ class CallerIDService : Service() {
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.CENTER
@@ -95,18 +102,34 @@ class CallerIDService : Service() {
         popupView?.findViewById<TextView>(R.id.caller_status)?.text = installation.status
         popupView?.findViewById<TextView>(R.id.caller_location)?.text = installation.clientLocation
 
+        val closeButton = popupView?.findViewById<ImageButton>(R.id.close_button)
+        closeButton?.setOnClickListener { stopSelf() }
+
+        popupView?.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = event.x
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val deltaX = event.x - initialX
+                    if (abs(deltaX) > 100) { // Swipe threshold
+                        stopSelf()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
         windowManager.addView(popupView, params)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (popupView != null) {
-             Handler(Looper.getMainLooper()).post {
-                if (popupView?.windowToken != null) {
-                    windowManager.removeView(popupView)
-                    popupView = null
-                }
-            }
+        if (popupView != null && popupView?.windowToken != null) {
+            windowManager.removeView(popupView)
+            popupView = null
         }
     }
 }

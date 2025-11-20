@@ -36,6 +36,7 @@ class MonthlyExpensesViewModel : ViewModel() {
                                 if (it.date.isNotBlank()) {
                                     val expenseDate = dateFormat.parse(it.date)
                                     if (expenseDate != null && !expenseDate.before(startDate) && !expenseDate.after(endDate)) {
+                                        it.id = child.key ?: ""
                                         expenses.add(it)
                                     }
                                 }
@@ -51,6 +52,16 @@ class MonthlyExpensesViewModel : ViewModel() {
                     // Handle error
                 }
             })
+        }
+    }
+
+    fun deleteExpense(expenseId: String) {
+        viewModelScope.launch {
+            if (expenseId.isNotBlank()) {
+                val database = FirebaseDatabase.getInstance()
+                val expenseRef = database.getReference("expenses").child(expenseId)
+                expenseRef.removeValue()
+            }
         }
     }
 }

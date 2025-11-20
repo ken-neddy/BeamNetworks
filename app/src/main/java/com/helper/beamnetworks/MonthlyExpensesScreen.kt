@@ -11,16 +11,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import java.text.SimpleDateFormat
+import java.text.DateFormatSymbols
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -46,6 +48,9 @@ fun MonthlyExpensesScreen(
 ) {
     val expenses by viewModel.expenses.collectAsState()
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var expenseToDelete by remember { mutableStateOf<ExpenseData?>(null) }
+
     val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
@@ -53,7 +58,7 @@ fun MonthlyExpensesScreen(
     var selectedYear by remember { mutableStateOf(currentYear) }
     var selectedDurationIndex by remember { mutableStateOf<Int?>(0) } // Default to "This Month"
 
-    val months = (0..11).map { SimpleDateFormat("MMMM", Locale.getDefault()).format(Date(2000, it, 1)) }
+    val months = remember { DateFormatSymbols(Locale.getDefault()).months.take(12) }
     val years = (2020..Calendar.getInstance().get(Calendar.YEAR) + 5).toList()
     val durations = listOf("This Month", "Last Month", "Last 3 Months", "Last 6 Months", "Last Year")
     val durationValues = listOf(0, 1, 3, 6, 12)
@@ -91,10 +96,33 @@ fun MonthlyExpensesScreen(
         }
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Expense") },
+            text = { Text("Are you sure you want to delete this expense?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        expenseToDelete?.let { viewModel.deleteExpense(it.id) }
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Monthly Expenses") },
+                title = { Text("Expenses") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -119,7 +147,7 @@ fun MonthlyExpensesScreen(
                             readOnly = true,
                             label = { Text("Month") },
                             enabled = selectedDurationIndex == null,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
+                            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, "Dropdown") },
                             modifier = Modifier.menuAnchor().fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = monthExpanded, onDismissRequest = { monthExpanded = false }) {
@@ -144,7 +172,7 @@ fun MonthlyExpensesScreen(
                             readOnly = true,
                             label = { Text("Year") },
                             enabled = selectedDurationIndex == null,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, "Dropdown") },
                             modifier = Modifier.menuAnchor().fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = yearExpanded, onDismissRequest = { yearExpanded = false }) {
@@ -171,7 +199,7 @@ fun MonthlyExpensesScreen(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Or Select a Duration") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = durationExpanded) },
+                    trailingIcon = { Icon(Icons.Filled.ArrowDropDown, "Dropdown") },
                     modifier = Modifier.menuAnchor().fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = durationExpanded, onDismissRequest = { durationExpanded = false }) {
@@ -200,6 +228,19 @@ fun MonthlyExpensesScreen(
                             Text("Date: ${expense.date}")
                             if (expense.moreNotes.isNotBlank()) {
                                 Text("Notes: ${expense.moreNotes}")
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                TextButton(onClick = { navController.navigate("log_expense?expenseId=${expense.id}") }) {
+                                    Text("Edit")
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                                TextButton(onClick = { 
+                                    expenseToDelete = expense
+                                    showDeleteDialog = true
+                                }) {
+                                    Text("Delete")
+                                }
                             }
                         }
                     }
