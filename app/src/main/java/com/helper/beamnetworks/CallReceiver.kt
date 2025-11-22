@@ -32,9 +32,6 @@ class CallReceiver : BroadcastReceiver() {
                     context.startService(serviceIntent)
                 }
             }
-        } else if (state == TelephonyManager.EXTRA_STATE_IDLE || state == TelephonyManager.EXTRA_STATE_OFFHOOK) {
-            val serviceIntent = Intent(context, CallerIDService::class.java)
-            context.stopService(serviceIntent)
         }
     }
 }
