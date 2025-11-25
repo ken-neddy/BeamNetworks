@@ -5,7 +5,9 @@ import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.location.Geocoder
 import android.os.Handler
 import android.os.IBinder
@@ -16,6 +18,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -25,6 +28,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.io.IOException
 import java.util.Locale
+import java.util.Random
 import kotlin.math.abs
 
 class CallerIDService : Service() {
@@ -87,6 +91,23 @@ class CallerIDService : Service() {
             })
     }
 
+    private fun getInitials(name: String): String {
+        val parts = name.split(" ").filter { it.isNotBlank() }
+        var initials = ""
+        if (parts.isNotEmpty()) {
+            initials += parts[0][0]
+        }
+        if (parts.size > 1) {
+            initials += parts[parts.size - 1][0]
+        }
+        return initials.uppercase()
+    }
+
+    private fun getRandomColor(): Int {
+        val random = Random()
+        return Color.argb(255, random.nextInt(256), random.nextInt(256), random.nextInt(256))
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun showPopup(installation: InstallationData) {
         if (popupView != null) return
@@ -106,6 +127,12 @@ class CallerIDService : Service() {
             x = 0
             y = 400 // Initial position
         }
+
+        val initialsTextView = popupView?.findViewById<TextView>(R.id.initials_text)
+        val profileImage = popupView?.findViewById<ImageView>(R.id.profile_image)
+
+        initialsTextView?.text = getInitials(installation.clientName)
+        (profileImage?.drawable?.mutate() as? GradientDrawable)?.setColor(getRandomColor())
 
         popupView?.findViewById<TextView>(R.id.caller_name)?.text = installation.clientName
         popupView?.findViewById<TextView>(R.id.caller_number)?.text = installation.clientPhone

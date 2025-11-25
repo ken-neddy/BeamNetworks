@@ -1,85 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
     <!-- BACKGROUND THAT KEEPS ASPECT RATIO -->
     <ImageView
         android:id="@+id/bg_image"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="153dp"
         android:adjustViewBounds="true"
         android:scaleType="centerCrop"
-        android:src="@drawable/untitled_design" />
+        android:src="@drawable/untitled_design"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- FOREGROUND CONTENT -->
-    <LinearLayout
+    <FrameLayout
+        android:id="@+id/profile_image_layout"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-        android:layout_width="match_parent"
+        <ImageView
+            android:id="@+id/profile_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/profile_background" />
+
+        <TextView
+            android:id="@+id/initials_text"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <ImageButton
+        android:id="@+id/close_button"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/close_x"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/caller_name"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
+        android:layout_marginTop="18dp"
+        android:text="John Doe"
+        android:textAlignment="center"
+        android:textColor="@color/black"
+        android:textSize="23sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+       app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageButton
-            android:id="@+id/close_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:background="@android:color/transparent"
-            android:src="@drawable/alpha_x_box" />
+    <TextView
+        android:id="@+id/caller_number"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="+254 7 1011 2663"
+        android:textAlignment="center"
+        android:textColor="@color/black"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/caller_name" />
 
-        <TextView
-            android:id="@+id/caller_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="John Doe"
-            android:textAlignment="center"
-            android:textSize="23sp"
-            android:textStyle="bold"
-            android:textColor="@color/black" />
+    <TextView
+        android:id="@+id/caller_status"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Pending installation"
+        android:textAlignment="center"
+        android:textColor="@color/black"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/caller_number" />
 
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="6dp" />
+    <TextView
+        android:id="@+id/caller_location"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Redsoil street 7"
+        android:textAlignment="center"
+        android:textColor="@color/black"
+        android:textSize="13dp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/caller_status" />
 
-        <TextView
-            android:id="@+id/caller_number"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="+254 7 1011 2663"
-            android:textSize="13dp"
-            android:textStyle="bold"
-            android:textColor="@color/black" />
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="6dp" />
-
-        <TextView
-            android:id="@+id/caller_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pending installation"
-            android:textColor="@color/black"
-            android:textSize="13dp"
-            android:textStyle="bold" />
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="6dp" />
-
-        <TextView
-            android:id="@+id/caller_location"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Redsoil street 7"
-            android:textColor="@color/black"
-            android:textSize="13dp"
-            android:textStyle="bold" />
-
-    </LinearLayout>
-
-</FrameLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
