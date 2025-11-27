@@ -63,6 +63,17 @@ fun LogExpenseScreen(navController: NavController, viewModel: LogExpenseViewMode
     val expenseOptions = listOf("link", "ODU", "power", "system")
     var expanded by remember { mutableStateOf(false) }
 
+    val pickedAmount = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.get<String>("picked_amount")
+
+    LaunchedEffect(pickedAmount) {
+        if (pickedAmount != null) {
+            viewModel.amount = pickedAmount
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("picked_amount")
+        }
+    }
+
     // Set the initial date to today
     LaunchedEffect(Unit) {
         if (viewModel.date.isBlank()) {
@@ -180,7 +191,15 @@ fun LogExpenseScreen(navController: NavController, viewModel: LogExpenseViewMode
                     label = { Text("Amount*") },
                     isError = viewModel.amount.isBlank() && viewModel.submitted,
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        IconButton(onClick = { navController.navigate("message_picker") }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_message),
+                                contentDescription = "Pick from message"
+                            )
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
