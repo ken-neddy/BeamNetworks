@@ -148,6 +148,12 @@ fun BeamNetworksApp() {
         composable("add_product") {
             AddProductScreen(navController = navController)
         }
+        composable("available_stock") {
+            AvailableStockScreen(navController = navController)
+        }
+        composable("stock_running_low") {
+            StockRunningLowScreen(navController = navController)
+        }
         composable("ticket_manager") {
             TicketManagerScreen(navController = navController)
         }
@@ -280,7 +286,7 @@ fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewMo
 @Composable
 fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
     val upcomingInstallations by viewModel.upcomingInstallationsCount.collectAsState()
-    val completedInstallations by viewModel.completedInstallationsThisMonthCount.collectAsState()
+    val incomeThisMonth by viewModel.incomeThisMonth.collectAsState()
     val monthlyExpenses by viewModel.monthlyExpensesTotal.collectAsState()
 
     Card(
@@ -313,10 +319,10 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { navController.navigate("completed_installations") }
+                    modifier = Modifier.clickable { navController.navigate("income") }
                 ) {
-                    Text("Completed This Month")
-                    Text(completedInstallations.toString())
+                    Text("Income This Month")
+                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth))
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -325,7 +331,7 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
                 modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
             ) {
                 Text("This Month's Expenses")
-                Text(String.format("%.2f", monthlyExpenses))
+                Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses))
             }
         }
     }
@@ -824,13 +830,59 @@ fun StockManagerScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.upcoming_installation),
+                        painter = painterResource(id = R.drawable.shape_plus_outline),
                         contentDescription = null,
                         modifier = Modifier.size(30.dp),
                         tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text("Add a product", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                onClick = { navController.navigate("available_stock") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.stock),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                        tint = Color.Unspecified
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Available Stock", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                onClick = { navController.navigate("stock_running_low") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.alert),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                        tint = Color.Unspecified
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Stock Running Low", style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -957,6 +1009,64 @@ fun AddProductScreen(navController: NavController) {
             contentAlignment = Alignment.Center
         ) {
             Text("Add Product Screen")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AvailableStockScreen(navController: NavController) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Available Stock") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Available Stock Screen")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StockRunningLowScreen(navController: NavController) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Stock Running Low") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Stock Running Low Screen")
         }
     }
 }

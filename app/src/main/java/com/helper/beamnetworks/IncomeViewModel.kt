@@ -57,7 +57,7 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _durationFilter = MutableStateFlow(IncomeDurationFilter.ALL_TIME)
+    private val _durationFilter = MutableStateFlow(IncomeDurationFilter.THIS_MONTH)
     val durationFilter = _durationFilter.asStateFlow()
 
     private val _totalAmount = MutableStateFlow(0.0)
