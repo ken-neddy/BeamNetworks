@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "636831587855",
+    "project_id": "beam-networks",
+    "storage_bucket": "beam-networks.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:636831587855:android:1e2039abb8d35a27248d7a",
+        "android_client_info": {
+          "package_name": "com.helper.beamnetworks"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA98B1GrmeJDMo4J0S2O64uxmrZOlZCZ64"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
