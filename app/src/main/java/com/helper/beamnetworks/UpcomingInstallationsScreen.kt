@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,18 +62,19 @@ fun UpcomingInstallationsScreen(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.padding(innerPadding)
-        ) {
-            items(upcomingInstallations) { installation ->
-                InstallationListItem(installation = installation) {
-                    viewModel.completeInstallation(installation.id)
-                }
+        ) {            items(upcomingInstallations) { installation ->
+                InstallationListItem(
+                    installation = installation,
+                    onComplete = { navController.navigate("product_selection/${installation.id}") },
+                    navController = navController
+                )
             }
         }
     }
 }
 
 @Composable
-fun InstallationListItem(installation: InstallationData, onComplete: () -> Unit) {
+fun InstallationListItem(installation: InstallationData, onComplete: () -> Unit, navController: NavController) {
     val context = LocalContext.current
 
     Card(
@@ -108,11 +110,16 @@ fun InstallationListItem(installation: InstallationData, onComplete: () -> Unit)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                IconButton(onClick = {
-                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${installation.clientPhone}"))
-                    context.startActivity(intent)
-                }) {
-                    Icon(Icons.Default.Call, contentDescription = "Call Client")
+                Row {
+                    IconButton(onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${installation.clientPhone}"))
+                        context.startActivity(intent)
+                    }) {
+                        Icon(Icons.Default.Call, contentDescription = "Call Client")
+                    }
+                    IconButton(onClick = { navController.navigate("log_installation?installationId=${installation.id}") }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Installation")
+                    }
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 TextButton(onClick = onComplete) {

@@ -76,19 +76,21 @@ class LogInstallationViewModel(savedStateHandle: SavedStateHandle) : ViewModel()
 
         viewModelScope.launch {
             _saveState.value = SaveState.Saving
-            
-            if (isEditing) {
-                val updatedInstallation = InstallationData(installationId!!, clientName, clientPhone, clientLocation, installationDate, moreNotes, "Upcoming", hasRouter)
-                installationsRef.child(installationId).setValue(updatedInstallation)
-                    .addOnSuccessListener { _saveState.value = SaveState.Success }
-                    .addOnFailureListener { _saveState.value = SaveState.Error(it.message ?: "Unknown error") }
-            } else {
-                val newInstallationRef = installationsRef.push()
-                val installationData = InstallationData(newInstallationRef.key!!, clientName, clientPhone, clientLocation, installationDate, moreNotes, "Upcoming", hasRouter)
-                newInstallationRef.setValue(installationData)
-                    .addOnSuccessListener { _saveState.value = SaveState.Success }
-                    .addOnFailureListener { _saveState.value = SaveState.Error(it.message ?: "Unknown error") }
-            }
+
+            val installationData = InstallationData(
+                id = installationId ?: installationsRef.push().key!!,
+                clientName = clientName,
+                clientPhone = clientPhone,
+                clientLocation = clientLocation,
+                installationDate = installationDate,
+                moreNotes = moreNotes,
+                status = "Upcoming",
+                hasRouter = hasRouter
+            )
+
+            installationsRef.child(installationData.id).setValue(installationData)
+                .addOnSuccessListener { _saveState.value = SaveState.Success }
+                .addOnFailureListener { _saveState.value = SaveState.Error(it.message ?: "Unknown error") }
         }
     }
 

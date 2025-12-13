@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,7 +30,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -102,7 +105,13 @@ fun BeamNetworksApp() {
         composable("main") {
             MainScreen(navController = navController)
         }
-        composable("log_installation") {
+        composable(
+            route = "log_installation?installationId={installationId}",
+            arguments = listOf(navArgument("installationId") {
+                type = NavType.StringType
+                nullable = true
+            })
+        ) {
             LogInstallationScreen(navController)
         }
         composable(
@@ -154,6 +163,15 @@ fun BeamNetworksApp() {
         composable("stock_running_low") {
             StockRunningLowScreen(navController = navController)
         }
+        composable("stock_settings") {
+            StockSettingsScreen(navController = navController)
+        }
+        composable(
+            route = "edit_stock_setting/{productName}",
+            arguments = listOf(navArgument("productName") { type = NavType.StringType })
+        ) {
+            EditStockSettingScreen(navController = navController)
+        }
         composable("ticket_manager") {
             TicketManagerScreen(navController = navController)
         }
@@ -171,6 +189,12 @@ fun BeamNetworksApp() {
         }
         composable("income") {
             IncomeScreen(navController = navController)
+        }
+        composable(
+            route = "product_selection/{installationId}",
+            arguments = listOf(navArgument("installationId") { type = NavType.StringType })
+        ) {
+            ProductSelectionScreen(navController)
         }
     }
 }
@@ -288,6 +312,7 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
     val upcomingInstallations by viewModel.upcomingInstallationsCount.collectAsState()
     val incomeThisMonth by viewModel.incomeThisMonth.collectAsState()
     val monthlyExpenses by viewModel.monthlyExpensesTotal.collectAsState()
+    val stockRunningLow by viewModel.stockRunningLowCount.collectAsState()
 
     Card(
         modifier = Modifier
@@ -326,12 +351,24 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
-                Text("This Month's Expenses")
-                Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
+                ) {
+                    Text("This Month's Expenses")
+                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses))
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { navController.navigate("stock_running_low") }
+                ) {
+                    Text("Stock Running Low")
+                    Text(stockRunningLow.toString())
+                }
             }
         }
     }
@@ -524,7 +561,7 @@ fun InstallationManagerScreen(navController: NavController) {
                         tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Log an Installation", style = MaterialTheme.typography.bodyLarge)
+                    Text("Schedule an Installation", style = MaterialTheme.typography.bodyLarge)
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -807,6 +844,14 @@ fun StockManagerScreen(navController: NavController) {
                             contentDescription = "Back"
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = { navController.navigate("stock_settings") }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
                 }
             )
         }
@@ -986,7 +1031,12 @@ fun TicketManagerScreen(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProductScreen(navController: NavController) {
+fun AddProductScreen(navController: NavController, addProductViewModel: AddProductViewModel = viewModel()) {
+    val products by addProductViewModel.products.collectAsState()
+    val productName by addProductViewModel.productName.collectAsState()
+    val amount by addProductViewModel.amount.collectAsState()
+    val isDropdownExpanded by addProductViewModel.isDropdownExpanded.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1002,20 +1052,58 @@ fun AddProductScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Add Product Screen")
+            ExposedDropdownMenuBox(
+                expanded = isDropdownExpanded,
+                onExpandedChange = { addProductViewModel.onDropdownClick() }
+            ) {
+                OutlinedTextField(
+                    value = productName,
+                    onValueChange = { addProductViewModel.onProductNameChange(it) },
+                    label = { Text("Product Name") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = isDropdownExpanded,
+                    onDismissRequest = { addProductViewModel.onDropdownDismiss() }
+                ) {
+                    products.forEach { product ->
+                        DropdownMenuItem(
+                            text = { Text(product.name) },
+                            onClick = { addProductViewModel.onProductSelected(product) }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { addProductViewModel.onAmountChange(it) },
+                label = { Text("Amount") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { addProductViewModel.addProduct() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Add Product")
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AvailableStockScreen(navController: NavController) {
+fun AvailableStockScreen(navController: NavController, availableStockViewModel: AvailableStockViewModel = viewModel()) {
+    val stockItems by availableStockViewModel.stockItems.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1031,20 +1119,144 @@ fun AvailableStockScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Available Stock Screen")
+            items(stockItems) { item ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = item.quantity.toString(), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StockRunningLowScreen(navController: NavController) {
+fun StockSettingsScreen(navController: NavController, stockSettingsViewModel: StockSettingsViewModel = viewModel()) {
+    val stockSettingItems by stockSettingsViewModel.stockSettingItems.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Minimum Stock Level Setting") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            items(stockSettingItems) { item ->
+                val borderColor = if (item.quantity < item.minStockLevel) Color.Red else Color.Transparent
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    border = BorderStroke(2.dp, borderColor),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "Min: ${item.minStockLevel}", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(onClick = { navController.navigate("edit_stock_setting/${item.name}") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Product"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditStockSettingScreen(navController: NavController, editStockSettingViewModel: EditStockSettingViewModel = viewModel()) {
+    val minStockLevel by editStockSettingViewModel.minStockLevel.collectAsState()
+    val productName by editStockSettingViewModel.productName.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Edit Stock for $productName") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            OutlinedTextField(
+                value = minStockLevel,
+                onValueChange = { editStockSettingViewModel.onMinStockLevelChange(it) },
+                label = { Text("Minimum Stock Level") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { editStockSettingViewModel.saveSettings() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StockRunningLowScreen(navController: NavController, stockRunningLowViewModel: StockRunningLowViewModel = viewModel()) {
+    val stockRunningLowItems by stockRunningLowViewModel.stockRunningLowItems.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1060,13 +1272,30 @@ fun StockRunningLowScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Stock Running Low Screen")
+            items(stockRunningLowItems) { item ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = "Available: ${item.quantity} (Min: ${item.minStockLevel})", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
         }
     }
 }
