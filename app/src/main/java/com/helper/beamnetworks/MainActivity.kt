@@ -339,15 +339,15 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { navController.navigate("upcoming_installations") }
                 ) {
+                    Text(upcomingInstallations.toString(), fontWeight = FontWeight.Bold)
                     Text("Upcoming Installations")
-                    Text(upcomingInstallations.toString())
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { navController.navigate("income") }
                 ) {
+                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth), fontWeight = FontWeight.Bold)
                     Text("Income This Month")
-                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth))
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -359,15 +359,15 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
                 ) {
+                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses), fontWeight = FontWeight.Bold)
                     Text("This Month's Expenses")
-                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses))
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { navController.navigate("stock_running_low") }
                 ) {
+                    Text(stockRunningLow.toString(), fontWeight = FontWeight.Bold)
                     Text("Stock Running Low")
-                    Text(stockRunningLow.toString())
                 }
             }
         }
@@ -543,7 +543,7 @@ fun InstallationManagerScreen(navController: NavController) {
                 .padding(16.dp)
         ) {
             Card(
-                onClick = { navController.navigate("log_installation") },
+                onClick = { navController.navigate("log_installation?installationId=") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -672,7 +672,7 @@ fun AccountsManagerScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.currency_usd),
+                        painter = painterResource(id = R.drawable.logexpense),
                         contentDescription = null,
                         modifier = Modifier.size(30.dp),
                         tint = Color.Unspecified
@@ -695,7 +695,7 @@ fun AccountsManagerScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.currency_usd),
+                        painter = painterResource(id = R.drawable.business_expense),
                         contentDescription = null,
                         modifier = Modifier.size(30.dp),
                         tint = Color.Unspecified
