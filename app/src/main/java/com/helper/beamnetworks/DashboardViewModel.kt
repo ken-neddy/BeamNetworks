@@ -16,6 +16,8 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+
+
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _upcomingInstallationsCount = MutableStateFlow(0)
@@ -26,6 +28,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _monthlyExpensesTotal = MutableStateFlow(0.0)
     val monthlyExpensesTotal: StateFlow<Double> = _monthlyExpensesTotal
+
+    private val _stockRunningLow = MutableStateFlow(0)
+    val stockRunningLow: StateFlow<Int> = _stockRunningLow
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private val incomeViewModel = IncomeViewModel(application)
@@ -46,6 +51,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val database = FirebaseDatabase.getInstance()
         val installationsRef = database.getReference("installations")
         val expensesRef = database.getReference("expenses")
+        val productsRef = database.getReference("Products")
 
         installationsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -87,6 +93,26 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                 }
                 _monthlyExpensesTotal.value = total
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle error
+            }
+        })
+        productsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var lowStockCount = 0
+                for (child in snapshot.children) {
+                    try {
+                        val product = child.getValue(Product::class.java)
+                        if (product != null && product.quantity <= product.lowStockThreshold) {
+                            lowStockCount++
+                        }
+                    } catch (e: Exception) {
+                        // Ignore invalid data
+                    }
+                }
+                _stockRunningLow.value = lowStockCount
             }
 
             override fun onCancelled(error: DatabaseError) {

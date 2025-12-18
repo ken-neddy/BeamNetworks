@@ -64,7 +64,7 @@ fun UpcomingInstallationsScreen(
         ) {
             items(upcomingInstallations) { installation ->
                 InstallationListItem(installation = installation) {
-                    viewModel.completeInstallation(installation.id)
+                    navController.navigate("complete_installation/${installation.id}")
                 }
             }
         }

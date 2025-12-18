@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -29,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -46,8 +48,6 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
@@ -98,11 +98,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BeamNetworksApp() {
     val navController = rememberNavController()
+    val incomeViewModel: IncomeViewModel = viewModel()
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {
-            MainScreen(navController = navController)
+            MainScreen(navController = navController, incomeViewModel = incomeViewModel)
         }
-        composable("log_installation") {
+        composable("schedule_installation") {
             LogInstallationScreen(navController)
         }
         composable(
@@ -119,6 +120,12 @@ fun BeamNetworksApp() {
         }
         composable("completed_installations") {
             CompletedInstallationsScreen(navController)
+        }
+        composable(
+            route = "complete_installation/{installationId}",
+            arguments = listOf(navArgument("installationId") { type = NavType.StringType })
+        ) {
+            CompleteInstallationScreen(navController = navController)
         }
         composable("monthly_expenses") {
             MonthlyExpensesScreen(navController)
@@ -154,6 +161,12 @@ fun BeamNetworksApp() {
         composable("stock_running_low") {
             StockRunningLowScreen(navController = navController)
         }
+        composable(
+            route = "edit_product/{productName}",
+            arguments = listOf(navArgument("productName") { type = NavType.StringType })
+        ) {
+            EditProductScreen(navController = navController)
+        }
         composable("ticket_manager") {
             TicketManagerScreen(navController = navController)
         }
@@ -170,17 +183,22 @@ fun BeamNetworksApp() {
             MessagePickerScreen(navController = navController)
         }
         composable("income") {
-            IncomeScreen(navController = navController)
+            IncomeScreen(navController = navController, incomeViewModel = incomeViewModel)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewModel = viewModel()) {
+fun MainScreen(
+    navController: NavController,
+    dashboardViewModel: DashboardViewModel = viewModel(),
+    incomeViewModel: IncomeViewModel = viewModel()
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val googleSignInState by incomeViewModel.googleSignInState.collectAsState()
 
     val permissionsToRequest = mutableListOf(
         Manifest.permission.READ_PHONE_STATE,
@@ -205,6 +223,12 @@ fun MainScreen(navController: NavController, dashboardViewModel: DashboardViewMo
                 Uri.parse("package:${context.packageName}")
             )
             overlayPermissionLauncher.launch(intent)
+        }
+    }
+
+    LaunchedEffect(googleSignInState.customerSaveStatus) {
+        googleSignInState.customerSaveStatus?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -288,6 +312,7 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
     val upcomingInstallations by viewModel.upcomingInstallationsCount.collectAsState()
     val incomeThisMonth by viewModel.incomeThisMonth.collectAsState()
     val monthlyExpenses by viewModel.monthlyExpensesTotal.collectAsState()
+    val stockRunningLow by viewModel.stockRunningLow.collectAsState()
 
     Card(
         modifier = Modifier
@@ -312,26 +337,38 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { navController.navigate("upcoming_installations") }
+                    modifier = Modifier.clickable { navController.navigate("income") }
                 ) {
-                    Text("Upcoming Installations")
-                    Text(upcomingInstallations.toString())
+                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth), fontWeight = FontWeight.Bold)
+                    Text("Income This Month")
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { navController.navigate("income") }
+                    modifier = Modifier.clickable { navController.navigate("upcoming_installations") }
                 ) {
-                    Text("Income This Month")
-                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth))
+                    Text(upcomingInstallations.toString(), fontWeight = FontWeight.Bold)
+                    Text("Upcoming Installations")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
-                Text("This Month's Expenses")
-                Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { navController.navigate("monthly_expenses") }
+                ) {
+                    Text(NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(monthlyExpenses), fontWeight = FontWeight.Bold)
+                    Text("Expenses this month")
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { navController.navigate("stock_running_low") }
+                ) {
+                    Text(stockRunningLow.toString(), fontWeight = FontWeight.Bold)
+                    Text("Stock Running Low")
+                }
             }
         }
     }
@@ -506,7 +543,7 @@ fun InstallationManagerScreen(navController: NavController) {
                 .padding(16.dp)
         ) {
             Card(
-                onClick = { navController.navigate("log_installation") },
+                onClick = { navController.navigate("schedule_installation") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -524,7 +561,7 @@ fun InstallationManagerScreen(navController: NavController) {
                         tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Log an Installation", style = MaterialTheme.typography.bodyLarge)
+                    Text("Schedule an Installation", style = MaterialTheme.typography.bodyLarge)
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -676,7 +713,7 @@ fun AccountsManagerScreen(navController: NavController) {
 fun IncomeScreen(navController: NavController, incomeViewModel: IncomeViewModel = viewModel()) {
     val googleSignInState by incomeViewModel.googleSignInState.collectAsState()
     val sheetData by incomeViewModel.sheetData.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     val searchQuery by incomeViewModel.searchQuery.collectAsState()
     val durationFilter by incomeViewModel.durationFilter.collectAsState()
     val totalAmount by incomeViewModel.totalAmount.collectAsState()
@@ -688,13 +725,12 @@ fun IncomeScreen(navController: NavController, incomeViewModel: IncomeViewModel 
 
     LaunchedEffect(googleSignInState.error) {
         googleSignInState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             incomeViewModel.clearError()
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Income") },
@@ -986,7 +1022,21 @@ fun TicketManagerScreen(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProductScreen(navController: NavController) {
+fun AddProductScreen(navController: NavController, viewModel: AddProductViewModel = viewModel()) {
+    val productNames by viewModel.productNames.collectAsState()
+    val productName by viewModel.productName.collectAsState()
+    val quantity by viewModel.quantity.collectAsState()
+    val saveStatus by viewModel.saveStatus.collectAsState()
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(saveStatus) {
+        saveStatus?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearSaveStatus()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1002,20 +1052,64 @@ fun AddProductScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Add Product Screen")
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = productName,
+                    onValueChange = { viewModel.onProductNameChange(it) },
+                    label = { Text("Product Name") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    productNames.forEach {
+                        DropdownMenuItem(
+                            text = { Text(it) },
+                            onClick = {
+                                viewModel.onProductNameChange(it)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = quantity,
+                onValueChange = { viewModel.onQuantityChange(it) },
+                label = { Text("Quantity") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { viewModel.saveProduct() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save Product")
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AvailableStockScreen(navController: NavController) {
+fun AvailableStockScreen(navController: NavController, viewModel: AvailableStockViewModel = viewModel()) {
+    val products by viewModel.products.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1031,20 +1125,116 @@ fun AvailableStockScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Available Stock Screen")
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.onSearchQueryChanged(it) },
+                label = { Text("Search") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(products) { product ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = product.name, fontWeight = FontWeight.Bold)
+                            Text(text = product.quantity.toString())
+                            IconButton(onClick = { navController.navigate("edit_product/${product.name}") }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StockRunningLowScreen(navController: NavController) {
+fun EditProductScreen(navController: NavController, viewModel: EditProductViewModel = viewModel()) {
+    val product by viewModel.product.collectAsState()
+    val lowStockThreshold by viewModel.lowStockThreshold.collectAsState()
+    val saveStatus by viewModel.saveStatus.collectAsState()
+    val context = LocalContext.current
+    val productName = navController.currentBackStackEntry?.arguments?.getString("productName") ?: ""
+
+    LaunchedEffect(productName) {
+        viewModel.getProduct(productName)
+    }
+
+    LaunchedEffect(saveStatus) {
+        saveStatus?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearSaveStatus()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Edit Product") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            product?.let {
+                Text("Editing ${it.name}", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = lowStockThreshold,
+                    onValueChange = { viewModel.onLowStockThresholdChange(it) },
+                    label = { Text("Low Stock Threshold") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { viewModel.saveProduct(productName) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StockRunningLowScreen(navController: NavController, viewModel: AvailableStockViewModel = viewModel()) {
+    val products by viewModel.products.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1060,20 +1250,123 @@ fun StockRunningLowScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Stock Running Low Screen")
+            items(products.filter { it.quantity <= it.lowStockThreshold }) { product ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = product.name, fontWeight = FontWeight.Bold)
+                        Text(text = product.quantity.toString())
+                    }
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RaiseTicketScreen(navController: NavController) {
+fun CompleteInstallationScreen(navController: NavController, viewModel: CompleteInstallationViewModel = viewModel()) {
+    val products by viewModel.products.collectAsState()
+    val usedProducts by viewModel.usedProducts.collectAsState()
+    val completionStatus by viewModel.completionStatus.collectAsState()
+    val context = LocalContext.current
+    val installationId = navController.currentBackStackEntry?.arguments?.getString("installationId") ?: ""
+
+    LaunchedEffect(completionStatus) {
+        completionStatus?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearCompletionStatus()
+            navController.popBackStack()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Complete Installation") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Text("Select Used Products", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(products) { product ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = product.name, modifier = Modifier.weight(1f))
+                        OutlinedTextField(
+                            value = usedProducts.find { it.name == product.name }?.quantity?.toString() ?: "0",
+                            onValueChange = { viewModel.onProductQuantityChanged(product.name, it) },
+                            label = { Text("Quantity") },
+                            modifier = Modifier.width(100.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { viewModel.completeInstallation(installationId) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Complete")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RaiseTicketScreen(navController: NavController, viewModel: RaiseTicketViewModel = viewModel()) {
+    val clientName by viewModel.clientName.collectAsState()
+    val issue by viewModel.issue.collectAsState()
+    val issues by viewModel.issues.collectAsState()
+    val filteredCustomers by viewModel.filteredCustomers.collectAsState()
+    val saveStatus by viewModel.saveStatus.collectAsState()
+    val context = LocalContext.current
+    var clientNameExpanded by remember { mutableStateOf(false) }
+    var issueExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(saveStatus) {
+        saveStatus?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearSaveStatus()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1089,13 +1382,79 @@ fun RaiseTicketScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Raise a Ticket Screen")
+            ExposedDropdownMenuBox(
+                expanded = clientNameExpanded,
+                onExpandedChange = { clientNameExpanded = !clientNameExpanded }
+            ) {
+                OutlinedTextField(
+                    value = clientName,
+                    onValueChange = { 
+                        viewModel.onClientNameChange(it)
+                        clientNameExpanded = true
+                     },
+                    label = { Text("Client's Name") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = clientNameExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = clientNameExpanded,
+                    onDismissRequest = { clientNameExpanded = false }
+                ) {
+                    filteredCustomers.forEach {
+                        DropdownMenuItem(
+                            text = { Text(it) },
+                            onClick = {
+                                viewModel.onClientNameChange(it)
+                                clientNameExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            ExposedDropdownMenuBox(
+                expanded = issueExpanded,
+                onExpandedChange = { issueExpanded = !issueExpanded }
+            ) {
+                OutlinedTextField(
+                    value = issue,
+                    onValueChange = { viewModel.onIssueChange(it) },
+                    label = { Text("Issue") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = issueExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = issueExpanded,
+                    onDismissRequest = { issueExpanded = false }
+                ) {
+                    issues.forEach {
+                        DropdownMenuItem(
+                            text = { Text(it) },
+                            onClick = {
+                                viewModel.onIssueChange(it)
+                                issueExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { viewModel.raiseTicket() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Raise Ticket")
+            }
         }
     }
 }

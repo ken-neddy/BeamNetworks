@@ -17,6 +17,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -42,10 +43,13 @@ enum class IncomeDurationFilter(val displayName: String) {
 data class GoogleSignInState(
     val account: GoogleSignInAccount? = null,
     val signInIntent: Intent,
-    val error: String? = null
+    val error: String? = null,
+    val customerSaveStatus: String? = null
 )
 
 class IncomeViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val database = FirebaseDatabase.getInstance().getReference()
 
     private val _googleSignInState = MutableStateFlow(GoogleSignInState(signInIntent = createSignInIntent()))
     val googleSignInState = _googleSignInState.asStateFlow()
@@ -63,6 +67,15 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
     private val _totalAmount = MutableStateFlow(0.0)
     val totalAmount = _totalAmount.asStateFlow()
 
+    private val _customerNames = MutableStateFlow<List<String>>(emptyList())
+    val customerNames = _customerNames.asStateFlow()
+
+    private val _filteredCustomerNames = MutableStateFlow<List<String>>(emptyList())
+    val filteredCustomerNames = _filteredCustomerNames.asStateFlow()
+
+    private val _customerSearchQuery = MutableStateFlow("")
+    val customerSearchQuery = _customerSearchQuery.asStateFlow()
+
     init {
         checkForExistingSignIn()
     }
@@ -78,6 +91,17 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
         applyFilters()
+    }
+
+    fun onCustomerSearchQueryChanged(query: String) {
+        _customerSearchQuery.value = query
+        if (query.isEmpty()) {
+            _filteredCustomerNames.value = _customerNames.value
+        } else {
+            _filteredCustomerNames.value = _customerNames.value.filter {
+                it.contains(query, ignoreCase = true)
+            }
+        }
     }
 
     fun onDurationFilterChanged(filter: IncomeDurationFilter) {
@@ -222,6 +246,28 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         _googleSignInState.value = _googleSignInState.value.copy(error = null)
     }
 
+    private fun saveCustomersToFirebase() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (originalSheetData.isEmpty()) {
+                return@launch
+            }
+            try {
+                val customerNames = originalSheetData.mapNotNull { it.getOrNull(1)?.toString() }.distinct()
+                if (customerNames.isNotEmpty()) {
+                    database.child("customers").setValue(customerNames)
+                        .addOnSuccessListener {
+                            _googleSignInState.value = _googleSignInState.value.copy(customerSaveStatus = "Customers saved successfully")
+                        }
+                        .addOnFailureListener {
+                            _googleSignInState.value = _googleSignInState.value.copy(customerSaveStatus = "Failed to save customers")
+                        }
+                }
+            } catch (e: Exception) {
+                _googleSignInState.value = _googleSignInState.value.copy(customerSaveStatus = "Failed to save customers: ${e.message}")
+            }
+        }
+    }
+
     private fun fetchSheetData(account: GoogleSignInAccount) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -246,7 +292,11 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
                     .execute()
 
                 originalSheetData = response.getValues()?.reversed() ?: emptyList()
+                val customerNamesList = originalSheetData.mapNotNull { it.getOrNull(1)?.toString() }.distinct()
+                _customerNames.value = customerNamesList
+                _filteredCustomerNames.value = customerNamesList
                 applyFilters()
+                saveCustomersToFirebase()
             } catch (e: Exception) {
                 Log.e("IncomeViewModel", "Failed to fetch sheet data", e)
                 _googleSignInState.value = _googleSignInState.value.copy(error = "Failed to fetch sheet data: ${e.message}")

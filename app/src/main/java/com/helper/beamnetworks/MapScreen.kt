@@ -2,17 +2,28 @@ package com.helper.beamnetworks
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.location.LocationManager
 import android.preference.PreferenceManager
+import android.provider.Settings
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +39,7 @@ import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -40,6 +52,7 @@ fun MapScreen(navController: NavController) {
     val context = LocalContext.current
     var selectedLocation by remember { mutableStateOf<GeoPoint?>(null) }
     val mapView = remember { MapView(context) }
+    var showLocationDialog by remember { mutableStateOf(false) }
 
     val locationPermissionsState = rememberMultiplePermissionsState(
         listOf(
@@ -50,7 +63,14 @@ fun MapScreen(navController: NavController) {
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
-        locationPermissionsState.launchMultiplePermissionRequest()
+    }
+
+    if (showLocationDialog) {
+        EnableLocationDialog(onDismiss = { showLocationDialog = false }) {
+            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+            context.startActivity(intent)
+            showLocationDialog = false
+        }
     }
 
     Scaffold(
@@ -59,14 +79,20 @@ fun MapScreen(navController: NavController) {
                 FloatingActionButton(
                     onClick = {
                         if (locationPermissionsState.allPermissionsGranted) {
-                            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-                            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                                location?.let {
-                                    val currentLocation = GeoPoint(it.latitude, it.longitude)
-                                    mapView.controller.setCenter(currentLocation)
-                                    mapView.controller.setZoom(18.0)
+                            if (isLocationEnabled(context)) {
+                                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
+                                    location?.let {
+                                        val currentLocation = GeoPoint(it.latitude, it.longitude)
+                                        mapView.controller.setCenter(currentLocation)
+                                        mapView.controller.setZoom(18.0)
+                                    }
                                 }
+                            } else {
+                                showLocationDialog = true
                             }
+                        } else {
+                            locationPermissionsState.launchMultiplePermissionRequest()
                         }
                     },
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -96,8 +122,17 @@ fun MapScreen(navController: NavController) {
                     selectedLocation = it
                 })
             } else {
-                // Handle permission denial
-                // You could show a message to the user here
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("Location permission is required to use this feature.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { locationPermissionsState.launchMultiplePermissionRequest() }) {
+                        Text("Grant Permission")
+                    }
+                }
             }
         }
     }
@@ -143,5 +178,31 @@ fun MapPicker(mapView: MapView, onLocationSelected: (GeoPoint) -> Unit) {
                 overlays.add(0, mapEventsOverlay)
             }
         }
+    )
+}
+
+@Composable
+fun EnableLocationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enable Location Services") },
+        text = { Text("Please enable location services to use this feature.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Enable")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+private fun isLocationEnabled(context: Context): Boolean {
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
+        LocationManager.NETWORK_PROVIDER
     )
 }

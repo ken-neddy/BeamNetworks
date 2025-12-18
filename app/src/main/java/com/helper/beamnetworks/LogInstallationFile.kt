@@ -134,7 +134,7 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(if (viewModel.isEditing) "Installation Details" else "Log a new installation") },
+                title = { Text(if (viewModel.isEditing) "Installation Details" else "Schedule an installation") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -266,7 +266,6 @@ fun LogInstallationScreen(navController: NavController, viewModel: LogInstallati
         }
     }
 }
-
 private fun showNewInstallationNotification(context: Context, clientName: String, installationDate: String) {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val date = sdf.parse(installationDate)
@@ -282,7 +281,6 @@ private fun showNewInstallationNotification(context: Context, clientName: String
         .build()
     notificationManager.notify(System.currentTimeMillis().toInt(), notification)
 }
-
 @Preview(showBackground = true)
 @Composable
 fun LogInstallationScreenPreview() {

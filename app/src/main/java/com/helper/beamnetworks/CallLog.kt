@@ -3,8 +3,11 @@ package com.helper.beamnetworks
 import android.Manifest
 import android.content.pm.PackageManager
 import android.provider.CallLog
+import android.telephony.PhoneNumberUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,24 +26,30 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -49,6 +58,7 @@ data class CallLogEntry(
     val name: String,
     val number: String,
     val date: String,
+    val dateMillis: Long,
     val duration: String,
     val type: CallType
 )
@@ -60,12 +70,37 @@ enum class CallType {
     UNKNOWN
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun getDayGroup(dateMillis: Long): String {
+    val calendar = Calendar.getInstance()
+    val today = calendar.clone() as Calendar
+
+    calendar.timeInMillis = dateMillis
+
+    val yesterday = today.clone() as Calendar
+    yesterday.add(Calendar.DAY_OF_YEAR, -1)
+
+    return when {
+        calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                calendar.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) -> "Today"
+        calendar.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
+                calendar.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> "Yesterday"
+        else -> {
+            SimpleDateFormat("EEEE, dd MMM", Locale.getDefault()).format(Date(dateMillis))
+        }
+    }
+}
+
+private fun phoneNumbersMatch(num1: String, num2: String): Boolean {
+    return PhoneNumberUtils.compare(num1, num2)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun CallLogScreen(navController: NavController) {
+fun CallLogScreen(navController: NavController, callLogViewModel: CallLogViewModel = viewModel()) {
     val context = LocalContext.current
-    var callLogs by remember { mutableStateOf<List<CallLogEntry>>(emptyList()) }
+    var groupedCallLogs by remember { mutableStateOf<Map<String, List<CallLogEntry>>>(emptyMap()) }
     var hasPermission by remember { mutableStateOf(false) }
+    val installations by callLogViewModel.installations.collectAsState()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -97,7 +132,7 @@ fun CallLogScreen(navController: NavController) {
         }
     ) { innerPadding ->
         if (hasPermission) {
-            LaunchedEffect(Unit) {
+            LaunchedEffect(installations) { // Relaunch when installations change
                 val cursor = context.contentResolver.query(
                     CallLog.Calls.CONTENT_URI,
                     null,
@@ -128,7 +163,8 @@ fun CallLogScreen(navController: NavController) {
                                 id = id,
                                 name = name,
                                 number = number,
-                                date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(date)),
+                                date = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(date)),
+                                dateMillis = date,
                                 duration = "${duration / 60}m ${duration % 60}s",
                                 type = when (type) {
                                     CallLog.Calls.INCOMING_TYPE -> CallType.INCOMING
@@ -139,16 +175,31 @@ fun CallLogScreen(navController: NavController) {
                             )
                         )
                     }
-                    callLogs = logs
+                    groupedCallLogs = logs.groupBy { getDayGroup(it.dateMillis) }
                 }
             }
-            LazyColumn(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
-                items(callLogs) { callLog ->
-                    CallLogItem(callLog = callLog) {
-                        navController.previousBackStackEntry
-                            ?.savedStateHandle
-                            ?.set("selected_phone_number", callLog.number)
-                        navController.popBackStack()
+            LazyColumn(modifier = Modifier.padding(innerPadding)) {
+                groupedCallLogs.forEach { (day, logs) ->
+                    stickyHeader {
+                        Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
+                            Text(
+                                text = day,
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                    items(logs) { callLog ->
+                        val installation = installations.find { phoneNumbersMatch(it.clientPhone, callLog.number) }
+                        CallLogItem(
+                            callLog = callLog,
+                            installation = installation
+                        ) {
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("selected_phone_number", callLog.number)
+                            navController.popBackStack()
+                        }
                     }
                 }
             }
@@ -168,12 +219,18 @@ fun CallLogScreen(navController: NavController) {
 }
 
 @Composable
-fun CallLogItem(callLog: CallLogEntry, onCallLogClick: () -> Unit) {
+fun CallLogItem(
+    callLog: CallLogEntry,
+    installation: InstallationData?,
+    modifier: Modifier = Modifier, 
+    onCallLogClick: () -> Unit
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable(onClick = onCallLogClick),
+            .background(if (installation != null) Color(0xFFF26222) else Color.Transparent)
+            .clickable(onClick = onCallLogClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -184,7 +241,7 @@ fun CallLogItem(callLog: CallLogEntry, onCallLogClick: () -> Unit) {
                 modifier = Modifier.padding(end = 16.dp)
             )
             Column {
-                Text(text = callLog.name)
+                Text(text = installation?.clientName ?: callLog.name)
                 Text(text = callLog.number)
             }
         }
