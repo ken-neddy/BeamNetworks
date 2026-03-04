@@ -1,53 +1,54 @@
 package com.helper.beamnetworks.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = OrangeBeam,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = BrandBlue,         // #30449C
     onPrimary = Color.White,
+    primaryContainer = Color(0xFFE8EAF6),
+    onPrimaryContainer = BrandBlue,
+    
+    secondary = BrandOrange,      // #F26222
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFF3E0),
+    onSecondaryContainer = Color(0xFFE65100),
+    
+    tertiary = BrandYellow,       // #F9AE1A
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    tertiaryContainer = Color(0xFFFFFDE7),
+    onTertiaryContainer = Color(0xFFF57F17),
+    
+    error = BrandRed,             // #E02826
+    onError = Color.White,
+    
+    background = Color(0xFFF9FAFB), // Clean, modern light background
+    surface = Color.White,
+    onBackground = Color(0xFF111827), // Deep charcoal for readability
+    onSurface = Color(0xFF111827),
+    surfaceVariant = Color(0xFFF3F4F6),
+    onSurfaceVariant = Color(0xFF4B5563),
+    outline = Color(0xFFD1D5DB)
 )
 
 @Composable
 fun BeamNetworksTheme(
-    darkTheme: Boolean = false,
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = LightColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = colorScheme.primary.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
     }
 
     MaterialTheme(

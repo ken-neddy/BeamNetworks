@@ -32,10 +32,19 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val _stockRunningLow = MutableStateFlow(0)
     val stockRunningLow: StateFlow<Int> = _stockRunningLow
 
+    private val _openTicketsCount = MutableStateFlow(0)
+    val openTicketsCount: StateFlow<Int> = _openTicketsCount
+
+    private val _totalCustomersCount = MutableStateFlow(0)
+    val totalCustomersCount: StateFlow<Int> = _totalCustomersCount
+
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private val incomeViewModel = IncomeViewModel(application)
 
     init {
+        // Set the filter specifically to THIS_MONTH for dashboard display
+        incomeViewModel.onDurationFilterChanged(IncomeDurationFilter.THIS_MONTH)
+        
         fetchDashboardData()
         incomeViewModel.totalAmount.onEach { _incomeThisMonth.value = it }.launchIn(viewModelScope)
     }
@@ -52,6 +61,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val installationsRef = database.getReference("installations")
         val expensesRef = database.getReference("expenses")
         val productsRef = database.getReference("Products")
+        val ticketsRef = database.getReference("tickets")
+        val customersRef = database.getReference("Customers")
 
         installationsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -99,6 +110,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 // Handle error
             }
         })
+        
         productsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 var lowStockCount = 0
@@ -118,6 +130,26 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             override fun onCancelled(error: DatabaseError) {
                 // Handle error
             }
+        })
+
+        ticketsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var count = 0
+                for (child in snapshot.children) {
+                    if (child.child("status").getValue(String::class.java) == "open") {
+                        count++
+                    }
+                }
+                _openTicketsCount.value = count
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        customersRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                _totalCustomersCount.value = snapshot.childrenCount.toInt()
+            }
+            override fun onCancelled(error: DatabaseError) {}
         })
     }
 }

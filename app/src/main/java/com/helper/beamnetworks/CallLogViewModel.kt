@@ -16,8 +16,33 @@ class CallLogViewModel : ViewModel() {
     private val _installations = MutableStateFlow<List<InstallationData>>(emptyList())
     val installations = _installations.asStateFlow()
 
+    private val _customers = MutableStateFlow<List<CustomerData>>(emptyList())
+    val customers = _customers.asStateFlow()
+
     init {
         fetchInstallations()
+        fetchCustomers()
+    }
+
+    private fun fetchCustomers() {
+        database.child("Customers").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val customerList = snapshot.children.mapNotNull {
+                    try {
+                        it.getValue(CustomerData::class.java)
+                    } catch (e: Exception) {
+                        Log.e("CallLogViewModel", "Error parsing customer", e)
+                        null
+                    }
+                }
+                _customers.value = customerList
+                Log.d("CallLogViewModel", "Loaded ${customerList.size} customers")
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("CallLogViewModel", "Failed to fetch customers", error.toException())
+            }
+        })
     }
 
     private fun fetchInstallations() {

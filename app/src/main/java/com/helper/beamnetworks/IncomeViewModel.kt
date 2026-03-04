@@ -1,27 +1,14 @@
 package com.helper.beamnetworks
 
 import android.app.Application
-import android.app.Activity
-import android.content.Intent
 import android.util.Log
-import androidx.activity.result.ActivityResult
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
-import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.json.gson.GsonFactory
-import com.google.api.services.sheets.v4.Sheets
-import com.google.api.services.sheets.v4.SheetsScopes
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -40,68 +27,68 @@ enum class IncomeDurationFilter(val displayName: String) {
     LAST_6_MONTHS("Last 6 Months")
 }
 
-data class GoogleSignInState(
-    val account: GoogleSignInAccount? = null,
-    val signInIntent: Intent,
-    val error: String? = null,
-    val customerSaveStatus: String? = null
-)
-
 class IncomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = FirebaseDatabase.getInstance().getReference()
 
-    private val _googleSignInState = MutableStateFlow(GoogleSignInState(signInIntent = createSignInIntent()))
-    val googleSignInState = _googleSignInState.asStateFlow()
-
-    private var originalSheetData = listOf<List<Any>>()
-    private val _sheetData = MutableStateFlow<List<List<Any>>>(emptyList())
-    val sheetData = _sheetData.asStateFlow()
+    private var originalPaymentData = listOf<PaymentData>()
+    private val _payments = MutableStateFlow<List<PaymentData>>(emptyList())
+    val payments = _payments.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _durationFilter = MutableStateFlow(IncomeDurationFilter.THIS_MONTH)
+    private val _durationFilter = MutableStateFlow(IncomeDurationFilter.ALL_TIME)
     val durationFilter = _durationFilter.asStateFlow()
 
     private val _totalAmount = MutableStateFlow(0.0)
     val totalAmount = _totalAmount.asStateFlow()
 
-    private val _customerNames = MutableStateFlow<List<String>>(emptyList())
-    val customerNames = _customerNames.asStateFlow()
-
-    private val _filteredCustomerNames = MutableStateFlow<List<String>>(emptyList())
-    val filteredCustomerNames = _filteredCustomerNames.asStateFlow()
-
-    private val _customerSearchQuery = MutableStateFlow("")
-    val customerSearchQuery = _customerSearchQuery.asStateFlow()
-
     init {
-        checkForExistingSignIn()
+        fetchPaymentsFromFirebase()
     }
 
-    private fun checkForExistingSignIn() {
-        val account = GoogleSignIn.getLastSignedInAccount(getApplication())
-        if (account != null && GoogleSignIn.hasPermissions(account, Scope(SheetsScopes.SPREADSHEETS_READONLY))) {
-            _googleSignInState.value = _googleSignInState.value.copy(account = account)
-            fetchSheetData(account)
-        }
+    private fun fetchPaymentsFromFirebase() {
+        database.child("Payments").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val paymentList = mutableListOf<PaymentData>()
+                for (child in snapshot.children) {
+                    try {
+                        val amount = child.child("Amount").getValue()?.toString() ?: ""
+                        val date = child.child("Created at").getValue(String::class.java) ?: ""
+                        val customerName = child.child("Customer name").getValue(String::class.java) ?: ""
+                        val notes = child.child("Notes").getValue(String::class.java) ?: ""
+                        
+                        // If Customer name is empty, use Notes as the name (common for service payments)
+                        val displayName = if (customerName.isBlank()) notes else customerName
+
+                        if (displayName.isNotEmpty() || amount.isNotEmpty()) {
+                            paymentList.add(PaymentData(
+                                id = child.key ?: "",
+                                date = date,
+                                customerName = displayName,
+                                amount = amount,
+                                notes = notes
+                            ))
+                        }
+                    } catch (e: Exception) {
+                        Log.e("IncomeViewModel", "Error parsing payment at ${child.key}", e)
+                    }
+                }
+                
+                originalPaymentData = paymentList.reversed()
+                applyFilters()
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("IncomeViewModel", "Database error: ${error.message}")
+            }
+        })
     }
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
         applyFilters()
-    }
-
-    fun onCustomerSearchQueryChanged(query: String) {
-        _customerSearchQuery.value = query
-        if (query.isEmpty()) {
-            _filteredCustomerNames.value = _customerNames.value
-        } else {
-            _filteredCustomerNames.value = _customerNames.value.filter {
-                it.contains(query, ignoreCase = true)
-            }
-        }
     }
 
     fun onDurationFilterChanged(filter: IncomeDurationFilter) {
@@ -110,46 +97,50 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun applyFilters() {
-        if (originalSheetData.isEmpty()) {
-            _sheetData.value = emptyList()
+        if (originalPaymentData.isEmpty()) {
+            _payments.value = emptyList()
             _totalAmount.value = 0.0
             return
         }
 
-        val filteredList = originalSheetData.filter { row ->
-            val name = row.getOrNull(1)?.toString() ?: ""
-            val nameMatches = name.contains(_searchQuery.value, ignoreCase = true)
-
-            val dateString = row.getOrNull(0)?.toString() ?: ""
-            val durationMatches = checkDate(dateString, _durationFilter.value)
-
+        val filteredList = originalPaymentData.filter { payment ->
+            val nameMatches = payment.customerName.contains(_searchQuery.value, ignoreCase = true)
+            val durationMatches = checkDate(payment.date, _durationFilter.value)
             nameMatches && durationMatches
         }
-        _sheetData.value = filteredList
+        _payments.value = filteredList
 
         val total = filteredList.sumOf {
-            it.getOrNull(2)?.toString()?.replace(",", "")?.toDoubleOrNull() ?: 0.0
+            it.amount.replace(",", "").toDoubleOrNull() ?: 0.0
         }
         _totalAmount.value = total
     }
 
     private fun parseDate(dateString: String): Date? {
-        val datePart = dateString.split(" ")[0]
-        val supportedFormats = listOf(
-            "yyyy-MM-dd",
-            "dd/MM/yyyy",
-            "M/d/yyyy",
-            "MM/dd/yyyy",
-            "yyyy/MM/dd"
-        )
-        for (format in supportedFormats) {
-            try {
-                return SimpleDateFormat(format, Locale.getDefault()).parse(datePart)
-            } catch (e: ParseException) {
-                // Continue to next format
+        if (dateString.isBlank()) return null
+        
+        // Handle ISO 8601 format: 2024-09-30T14:58:24.000Z
+        val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        try {
+            return isoFormat.parse(dateString)
+        } catch (e: ParseException) {
+            // Fallback to other formats
+            val datePart = dateString.split(" ")[0].split("T")[0]
+            val supportedFormats = listOf(
+                "yyyy-MM-dd",
+                "dd/MM/yyyy",
+                "M/d/yyyy",
+                "MM/dd/yyyy",
+                "yyyy/MM/dd",
+                "dd-MM-yyyy"
+            )
+            for (format in supportedFormats) {
+                try {
+                    return SimpleDateFormat(format, Locale.getDefault()).parse(datePart)
+                } catch (e: ParseException) {
+                }
             }
         }
-        Log.w("IncomeViewModel", "Unparseable date: '$dateString'")
         return null
     }
 
@@ -168,9 +159,7 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         val endCal: Calendar = Calendar.getInstance()
 
         when (filter) {
-            IncomeDurationFilter.TODAY -> {
-                // Calendars are already today
-            }
+            IncomeDurationFilter.TODAY -> {}
             IncomeDurationFilter.YESTERDAY -> {
                 startCal.add(Calendar.DAY_OF_YEAR, -1)
                 endCal.add(Calendar.DAY_OF_YEAR, -1)
@@ -208,99 +197,8 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun checkDate(dateString: String, filter: IncomeDurationFilter): Boolean {
         if (filter == IncomeDurationFilter.ALL_TIME) return true
-
         val itemDate = parseDate(dateString) ?: return false
-
         val (start, end) = getStartAndEndOf(filter) ?: return true
-
         return !itemDate.before(start) && !itemDate.after(end)
-    }
-
-    private fun createSignInIntent(): Intent {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("264762838650-4omo9h19m9s27i3pg48a7iuf8jq0ntmu.apps.googleusercontent.com")
-            .requestEmail()
-            .requestScopes(Scope(SheetsScopes.SPREADSHEETS_READONLY))
-            .build()
-        return GoogleSignIn.getClient(getApplication(), gso).signInIntent
-    }
-
-    fun handleGoogleSignInResult(result: ActivityResult) {
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                _googleSignInState.value = _googleSignInState.value.copy(account = account, error = null)
-                fetchSheetData(account)
-            } catch (e: ApiException) {
-                Log.e("IncomeViewModel", "Sign-in failed with code: ${e.statusCode}", e)
-                _googleSignInState.value = _googleSignInState.value.copy(error = "Sign-in failed. Check SHA-1 and Web Client ID config in Google Cloud. Error code: ${e.statusCode}")
-            }
-        } else {
-            Log.e("IncomeViewModel", "Sign-in cancelled or failed with result code: ${result.resultCode}")
-            _googleSignInState.value = _googleSignInState.value.copy(error = "Sign-in cancelled or failed. Check your Web Client ID.")
-        }
-    }
-
-    fun clearError() {
-        _googleSignInState.value = _googleSignInState.value.copy(error = null)
-    }
-
-    private fun saveCustomersToFirebase() {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (originalSheetData.isEmpty()) {
-                return@launch
-            }
-            try {
-                val customerNames = originalSheetData.mapNotNull { it.getOrNull(1)?.toString() }.distinct()
-                if (customerNames.isNotEmpty()) {
-                    database.child("customers").setValue(customerNames)
-                        .addOnSuccessListener {
-                            _googleSignInState.value = _googleSignInState.value.copy(customerSaveStatus = "Customers saved successfully")
-                        }
-                        .addOnFailureListener {
-                            _googleSignInState.value = _googleSignInState.value.copy(customerSaveStatus = "Failed to save customers")
-                        }
-                }
-            } catch (e: Exception) {
-                _googleSignInState.value = _googleSignInState.value.copy(customerSaveStatus = "Failed to save customers: ${e.message}")
-            }
-        }
-    }
-
-    private fun fetchSheetData(account: GoogleSignInAccount) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val credential = GoogleAccountCredential.usingOAuth2(
-                    getApplication(),
-                    listOf(SheetsScopes.SPREADSHEETS_READONLY)
-                ).setSelectedAccount(account.account)
-
-                val sheets = Sheets.Builder(
-                    NetHttpTransport(),
-                    GsonFactory.getDefaultInstance(),
-                    credential
-                )
-                    .setApplicationName("BeamNetworks")
-                    .build()
-
-                val spreadsheetId = "1-1oKNTxuDza_Q8QXMKDwwydCVc_V5r-keKqPbuR_t3A"
-                val range = "balancesheet!A1:C2000"
-
-                val response = sheets.spreadsheets().values()
-                    .get(spreadsheetId, range)
-                    .execute()
-
-                originalSheetData = response.getValues()?.reversed() ?: emptyList()
-                val customerNamesList = originalSheetData.mapNotNull { it.getOrNull(1)?.toString() }.distinct()
-                _customerNames.value = customerNamesList
-                _filteredCustomerNames.value = customerNamesList
-                applyFilters()
-                saveCustomersToFirebase()
-            } catch (e: Exception) {
-                Log.e("IncomeViewModel", "Failed to fetch sheet data", e)
-                _googleSignInState.value = _googleSignInState.value.copy(error = "Failed to fetch sheet data: ${e.message}")
-            }
-        }
     }
 }
