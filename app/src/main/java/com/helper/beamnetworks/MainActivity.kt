@@ -307,6 +307,7 @@ fun MainScreen(
                     .padding(innerPadding)
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 16.dp)
             ) {
                 DashboardCard(dashboardViewModel, navController)
                 
@@ -319,40 +320,44 @@ fun MainScreen(
 //                )
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ManagerCard(
-                        title = "Installation",
+                        title = "Installations",
                         subtitle = "Manager",
                         iconRes = R.drawable.installation_hammer_screwdriver,
                         iconTint = Color(0xFFF9AE1A),
+                        modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("installation_manager") }
                     )
                     ManagerCard(
                         title = "Accounts",
                         subtitle = "Manager",
                         iconRes = R.drawable.currency_usd,
-                        iconTint = MaterialTheme.colorScheme.secondary,
+                        iconTint = Color(0xFFF9AE1A),
+                        modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("accounts_manager") }
                     )
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ManagerCard(
                         title = "Stock",
                         subtitle = "Manager",
                         iconRes = R.drawable.stock,
-                        iconTint = Color(0xFFF26222),
+                        iconTint = Color(0xFFF9AE1A),
+                        modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("stock_manager") }
                     )
                     ManagerCard(
                         title = "Tickets",
                         subtitle = "Manager",
                         iconRes = R.drawable.ticket_account,
-                        iconTint = MaterialTheme.colorScheme.tertiary,
+                        iconTint = Color(0xFFF9AE1A),
+                        modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("ticket_manager") }
                     )
                 }
@@ -373,7 +378,7 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(vertical = 16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -382,17 +387,6 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
             modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            DashboardItem(
-                label = "Income This Month",
-                value = NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth),
-                valueColor = MaterialTheme.colorScheme.primary,
-                valueFontSize = 22.sp,
-                valueFontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.clickable { navController.navigate("income") }
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -413,6 +407,17 @@ fun DashboardCard(viewModel: DashboardViewModel, navController: NavController) {
                     modifier = Modifier.weight(1f).clickable { navController.navigate("upcoming_installations") }
                 )
             }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
+            DashboardItem(
+                label = "Income This Month",
+                value = NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(incomeThisMonth),
+                valueColor = MaterialTheme.colorScheme.primary,
+                valueFontSize = 22.sp,
+                valueFontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.clickable { navController.navigate("income") }
+            )
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -482,10 +487,10 @@ fun DashboardItem(
 }
 
 @Composable
-fun ManagerCard(title: String, subtitle: String, iconRes: Int, iconTint: Color, onClick: () -> Unit) {
+fun ManagerCard(title: String, subtitle: String, iconRes: Int, iconTint: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.size(width = 160.dp, height = 150.dp).padding(4.dp),
+        modifier = modifier.height(150.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -511,21 +516,6 @@ fun ManagerCard(title: String, subtitle: String, iconRes: Int, iconTint: Color, 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstallationManagerScreen(navController: NavController) {
-    val view = LocalView.current
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val managerColor = Color(0xFFF9AE1A)
-
-    if (!view.isInEditMode) {
-        DisposableEffect(Unit) {
-            val window = (view.context as Activity).window
-            window.statusBarColor = managerColor.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-            onDispose {
-                window.statusBarColor = primaryColor.toArgb()
-            }
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -535,7 +525,7 @@ fun InstallationManagerScreen(navController: NavController) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = managerColor)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -561,7 +551,7 @@ fun ManagerActionCard(title: String, icon: androidx.compose.ui.graphics.painter.
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Icon(painter = icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(painter = icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFF9AE1A))
             Spacer(modifier = Modifier.width(16.dp))
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         }
@@ -1163,7 +1153,7 @@ fun AvailableStockScreen(navController: NavController, viewModel: AvailableStock
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize().padding(16.dp)) {
-            OutlinedTextField(value = searchQuery, onValueChange = { viewModel.onSearchQueryChanged(it) }, label = { Text("Search products") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+            OutlinedTextField(value = searchQuery, onValueChange = { viewModel.onSearchQueryChanged(it) }, label = { Text("Search products") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp) )
             Spacer(modifier = Modifier.height(16.dp))
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(products) { product ->

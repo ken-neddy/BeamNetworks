@@ -28,9 +28,9 @@ private val LightColorScheme = lightColorScheme(
     error = BrandRed,             // #E02826
     onError = Color.White,
     
-    background = Color(0xFFF9FAFB), // Clean, modern light background
-    surface = Color.White,
-    onBackground = Color(0xFF111827), // Deep charcoal for readability
+    background = Color(0xFFF5F5F5), // Distinct off-white background
+    surface = Color.White,          // Pure white for cards and surfaces
+    onBackground = Color(0xFF111827),
     onSurface = Color(0xFF111827),
     surfaceVariant = Color(0xFFF3F4F6),
     onSurfaceVariant = Color(0xFF4B5563),
